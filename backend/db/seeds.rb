@@ -11,16 +11,22 @@ if Rails.env.development?
   puts "Clearing existing data..."
   CartItem.destroy_all
   Favorite.destroy_all
-  Book.destroy_all
+  MediaType.destroy_all
   Author.destroy_all
   Publisher.destroy_all
   User.destroy_all
 end
 
-# Create Admin User
-puts "Creating admin user..."
+# Create Admin Users
+puts "Creating admin users..."
 admin = User.find_or_create_by!(email: 'admin@bookvault.com') do |user|
   user.name = 'Admin User'
+  user.password = 'password123'
+  user.role = 'admin'
+end
+
+User.find_or_create_by!(email: 'dylanerichards@gmail.com') do |user|
+  user.name = 'Dylan Richards'
   user.password = 'password123'
   user.role = 'admin'
 end
@@ -131,23 +137,60 @@ end
   )
 end
 
+# Create Podcasts
+puts "Creating podcasts..."
+podcasts = []
+
+famous_podcasts = [
+  { title: 'Serial', host: 'Sarah Koenig', episode_count: 12, price: 0.0 },
+  { title: 'This American Life', host: 'Ira Glass', episode_count: 820, price: 0.0 },
+  { title: 'Radiolab', host: 'Lulu Miller', episode_count: 350, price: 4.99 },
+  { title: 'The Daily', host: 'Michael Barbaro', episode_count: 1800, price: 0.0 },
+  { title: 'Reply All', host: 'PJ Vogt', episode_count: 187, price: 2.99 },
+  { title: 'Hardcore History', host: 'Dan Carlin', episode_count: 72, price: 9.99 },
+  { title: 'Planet Money', host: 'Robert Smith', episode_count: 1600, price: 0.0 },
+  { title: 'Freakonomics Radio', host: 'Stephen Dubner', episode_count: 560, price: 3.99 },
+  { title: '99% Invisible', host: 'Roman Mars', episode_count: 560, price: 4.99 },
+  { title: 'Science Vs', host: 'Wendy Zukerman', episode_count: 210, price: 2.99 }
+]
+
+famous_podcasts.each do |podcast_data|
+  podcasts << Podcast.create!(
+    title: podcast_data[:title],
+    host: podcast_data[:host],
+    episode_count: podcast_data[:episode_count],
+    price: podcast_data[:price].positive? ? podcast_data[:price] : 1.99
+  )
+end
+
+# Create additional random podcasts
+15.times do
+  podcasts << Podcast.create!(
+    title: Faker::Book.unique.title,
+    host: Faker::Name.name,
+    episode_count: rand(1..500),
+    price: Faker::Commerce.price(range: 0.99..14.99)
+  )
+end
+
+# All media (books + podcasts) can be favorited or carted.
+media = books + podcasts
+
 # Create Favorites for customers
 puts "Creating user favorites..."
 customers.each do |customer|
-  # Each customer favorites 2-5 random books
-  sample_books = books.sample(rand(2..5))
-  sample_books.each do |book|
-    Favorite.find_or_create_by(user: customer, book: book)
+  # Each customer favorites 2-5 random media items
+  media.sample(rand(2..5)).each do |item|
+    Favorite.find_or_create_by(user: customer, media_type: item)
   end
 end
 
 # Create Cart Items for customers
 puts "Creating cart items..."
 customers.each do |customer|
-  # Each customer has 1-3 items in cart
-  sample_books = books.sample(rand(1..3))
-  sample_books.each do |book|
-    CartItem.find_or_create_by(user: customer, book: book) do |cart_item|
+  # Each customer has 1-3 media items in cart
+  media.sample(rand(1..3)).each do |item|
+    CartItem.find_or_create_by(user: customer, media_type: item) do |cart_item|
       cart_item.quantity = rand(1..3)
     end
   end
@@ -160,6 +203,7 @@ puts "  Users: #{User.count} (1 admin, #{User.customer.count} customers)"
 puts "  Authors: #{Author.count}"
 puts "  Publishers: #{Publisher.count}"
 puts "  Books: #{Book.count}"
+puts "  Podcasts: #{Podcast.count}"
 puts "  Favorites: #{Favorite.count}"
 puts "  Cart Items: #{CartItem.count}"
 puts ""
