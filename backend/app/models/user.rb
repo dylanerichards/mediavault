@@ -2,8 +2,9 @@ class User < ApplicationRecord
   has_secure_password
 
   has_many :favorites, dependent: :destroy
-  has_many :favorite_books, through: :favorites, source: :book
+  has_many :favorite_media_types, through: :favorites, source: :media_type
   has_many :cart_items, dependent: :destroy
+  has_many :analytics_events, dependent: :destroy
 
   enum :role, { customer: 0, admin: 1 }
 
