@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe Api::V1::CartItemsController, type: :controller do
   let(:user) { create(:user) }
   let!(:book) { create(:book, price: 19.99) }
-  let!(:cart_item) { create(:cart_item, user: user, book: book, quantity: 2) }
+  let!(:cart_item) { create(:cart_item, user: user, media_type: book, quantity: 2) }
 
   before do
     allow(controller).to receive(:authenticate_request)
@@ -30,7 +30,7 @@ RSpec.describe Api::V1::CartItemsController, type: :controller do
     context 'with new book' do
       let(:valid_params) do
         {
-          book_id: new_book.id,
+          media_type_id: new_book.id,
           quantity: 3
         }
       end
@@ -55,7 +55,7 @@ RSpec.describe Api::V1::CartItemsController, type: :controller do
     context 'with existing book' do
       let(:update_params) do
         {
-          book_id: book.id,
+          media_type_id: book.id,
           quantity: 1
         }
       end
@@ -72,17 +72,17 @@ RSpec.describe Api::V1::CartItemsController, type: :controller do
 
     context 'with non-existent book' do
       it 'returns not found error' do
-        post :create, params: { book_id: 99999, quantity: 1 }
+        post :create, params: { media_type_id: 99999, quantity: 1 }
 
         expect(response).to have_http_status(:not_found)
         json = JSON.parse(response.body)
-        expect(json['error']).to eq('Book not found')
+        expect(json['error']).to eq('Media type not found')
       end
     end
 
     context 'with invalid quantity' do
       it 'returns validation error' do
-        post :create, params: { book_id: new_book.id, quantity: 0 }
+        post :create, params: { media_type_id: new_book.id, quantity: 0 }
 
         expect(response).to have_http_status(:unprocessable_entity)
         json = JSON.parse(response.body)

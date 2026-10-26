@@ -5,10 +5,10 @@ RSpec.describe Favorite, type: :model do
 
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
-    it { is_expected.to belong_to(:book) }
+    it { is_expected.to belong_to(:media_type) }
   end
 
   describe 'validations' do
-    it { is_expected.to validate_uniqueness_of(:user_id).scoped_to(:book_id).with_message("Book is already in favorites") }
+    it { is_expected.to validate_uniqueness_of(:user_id).scoped_to(:media_type_id).with_message("Item is already in favorites") }
   end
 end

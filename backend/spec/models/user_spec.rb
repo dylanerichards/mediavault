@@ -5,7 +5,7 @@ RSpec.describe User, type: :model do
 
   describe 'associations' do
     it { is_expected.to have_many(:favorites).dependent(:destroy) }
-    it { is_expected.to have_many(:favorite_books).through(:favorites).source(:book) }
+    it { is_expected.to have_many(:favorite_media_types).through(:favorites).source(:media_type) }
     it { is_expected.to have_many(:cart_items).dependent(:destroy) }
   end
 

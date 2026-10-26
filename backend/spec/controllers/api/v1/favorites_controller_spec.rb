@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe Api::V1::FavoritesController, type: :controller do
   let(:user) { create(:user) }
   let!(:book) { create(:book) }
-  let!(:favorite) { create(:favorite, user: user, book: book) }
+  let!(:favorite) { create(:favorite, user: user, media_type: book) }
 
   before do
     allow(controller).to receive(:authenticate_request)
@@ -12,55 +12,56 @@ RSpec.describe Api::V1::FavoritesController, type: :controller do
   end
 
   describe 'GET #index' do
-    it 'returns user favorites with book data' do
+    it 'returns user favorites with media type data' do
       get :index
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
       expect(json['data']['favorites']).to be_an(Array)
       expect(json['data']['favorites'].length).to eq(1)
-      expect(json['data']['favorites'].first['book']['title']).to eq(book.title)
+      expect(json['data']['favorites'].first['media_type']['title']).to eq(book.title)
+      expect(json['data']['favorites'].first['media_type']['type']).to eq('Book')
     end
   end
 
   describe 'POST #create' do
     let(:new_book) { create(:book) }
 
-    context 'with valid book_id' do
+    context 'with valid media_type_id' do
       it 'creates a new favorite' do
         expect {
-          post :create, params: { book_id: new_book.id }
+          post :create, params: { media_type_id: new_book.id }
         }.to change(user.favorites, :count).by(1)
       end
 
       it 'returns created favorite data' do
-        post :create, params: { book_id: new_book.id }
+        post :create, params: { media_type_id: new_book.id }
 
         expect(response).to have_http_status(:created)
         json = JSON.parse(response.body)
-        expect(json['data']['favorite']['book']['id']).to eq(new_book.id)
-        expect(json['message']).to eq('Book added to favorites')
+        expect(json['data']['favorite']['media_type']['id']).to eq(new_book.id)
+        expect(json['message']).to eq('Added to favorites')
       end
     end
 
-    context 'with duplicate book' do
+    context 'with duplicate media type' do
       it 'returns validation error' do
-        post :create, params: { book_id: book.id }
+        post :create, params: { media_type_id: book.id }
 
         expect(response).to have_http_status(:unprocessable_entity)
         json = JSON.parse(response.body)
         expect(json['error']).to eq('Failed to add to favorites')
-        expect(json['errors'].join).to include('Book is already in favorites')
+        expect(json['errors'].join).to include('Item is already in favorites')
       end
     end
 
-    context 'with non-existent book' do
+    context 'with non-existent media type' do
       it 'returns not found error' do
-        post :create, params: { book_id: 99999 }
+        post :create, params: { media_type_id: 99999 }
 
         expect(response).to have_http_status(:not_found)
         json = JSON.parse(response.body)
-        expect(json['error']).to eq('Book not found')
+        expect(json['error']).to eq('Media type not found')
       end
     end
   end
@@ -78,7 +79,7 @@ RSpec.describe Api::V1::FavoritesController, type: :controller do
 
         expect(response).to have_http_status(:ok)
         json = JSON.parse(response.body)
-        expect(json['message']).to eq('Book removed from favorites')
+        expect(json['message']).to eq('Removed from favorites')
       end
     end
 
