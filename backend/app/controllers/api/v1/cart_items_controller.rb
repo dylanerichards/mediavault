@@ -2,7 +2,7 @@ class Api::V1::CartItemsController < Api::V1::BaseController
   before_action :set_cart_item, only: [ :update, :destroy ]
 
   def index
-    cart_items = current_user.cart_items.includes(book: [ :author, :publisher ])
+    cart_items = current_user.cart_items.includes(:media_type)
     total_price = cart_items.sum(&:total_price)
 
     render_success({
@@ -13,8 +13,8 @@ class Api::V1::CartItemsController < Api::V1::BaseController
   end
 
   def create
-    book = Book.find(cart_create_params[:book_id])
-    existing_item = current_user.cart_items.find_by(book: book)
+    media_type = MediaType.find(cart_create_params[:media_type_id])
+    existing_item = current_user.cart_items.find_by(media_type: media_type)
 
     if existing_item
       existing_item.quantity += cart_create_params[:quantity].to_i
@@ -24,7 +24,7 @@ class Api::V1::CartItemsController < Api::V1::BaseController
         render_error("Failed to update cart", :unprocessable_entity, existing_item.errors.full_messages)
       end
     else
-      cart_item = current_user.cart_items.build(book: book, quantity: cart_create_params[:quantity])
+      cart_item = current_user.cart_items.build(media_type: media_type, quantity: cart_create_params[:quantity])
       if cart_item.save
         render_success({ cart_item: cart_item_data(cart_item) }, "Item added to cart", :created)
       else
@@ -32,7 +32,7 @@ class Api::V1::CartItemsController < Api::V1::BaseController
       end
     end
   rescue ActiveRecord::RecordNotFound
-    render_not_found("Book")
+    render_not_found("Media type")
   end
 
   def update
@@ -61,7 +61,7 @@ class Api::V1::CartItemsController < Api::V1::BaseController
   end
 
   def cart_create_params
-    params.require(:book_id)
+    params.require(:media_type_id)
     params.require(:quantity)
     params
   end
@@ -71,21 +71,7 @@ class Api::V1::CartItemsController < Api::V1::BaseController
       id: cart_item.id,
       quantity: cart_item.quantity,
       total_price: cart_item.total_price.to_f,
-      book: {
-        id: cart_item.book.id,
-        title: cart_item.book.title,
-        isbn: cart_item.book.isbn,
-        price: cart_item.book.price.to_f,
-        publication_year: cart_item.book.publication_year,
-        author: {
-          id: cart_item.book.author.id,
-          name: cart_item.book.author.name
-        },
-        publisher: {
-          id: cart_item.book.publisher.id,
-          name: cart_item.book.publisher.name
-        }
-      },
+      media_type: media_type_data(cart_item.media_type),
       created_at: cart_item.created_at,
       updated_at: cart_item.updated_at
     }

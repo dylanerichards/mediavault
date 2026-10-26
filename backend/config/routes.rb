@@ -14,14 +14,18 @@ Rails.application.routes.draw do
       get "profile", to: "users#show"
       patch "profile", to: "users#update"
 
-      # Book management routes
-      resources :books, only: [ :index, :show, :create, :update, :destroy ]
+      # Media catalog routes (STI: Book, Podcast, ...)
+      resources :media_types, only: [ :index, :show, :create, :update, :destroy ]
       resources :authors, only: [ :index, :show, :create, :update, :destroy ]
       resources :publishers, only: [ :index, :show, :create, :update, :destroy ]
 
       # User interaction routes
       resources :favorites, only: [ :index, :create, :destroy ]
       resources :cart_items, only: [ :index, :create, :update, :destroy ]
+
+      # Analytics action tracking
+      get "analytics_events/stream", to: "analytics_stream#show"
+      resources :analytics_events, only: [ :index, :create ]
 
       # Admin routes
       namespace :admin do
