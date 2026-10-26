@@ -14,11 +14,13 @@ interface RegisterPageProps {
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ setUser }) => {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState<RegisterForm>({
     name: '',
     email: '',
     password: '',
   });
+
   const [errors, setErrors] = useState<{ [key: string]: string } | null>(null);
   const [apiError, setApiError] = useState<string>('');
 
@@ -29,7 +31,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ setUser }) => {
       [name]: value,
     }));
     // Clear field error when user starts typing
-    if (errors[name]) {
+    if (errors?.[name]) {
       setErrors(prev => ({
         ...prev,
         [name]: '',
@@ -40,20 +42,23 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ setUser }) => {
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
 
-    //TODO: Validate that the name input is not empty and is at least 2 characters long
-    //set 'Name is required' in the newErrors object if the name is empty
-    //set 'Name must be at least 2 characters long' in the newErrors object if 
-    //the name is not at least 2 characters long
+    if (!formData.name) {
+      newErrors.name = 'Name is required';
+    } else if (formData.name.length < 2) {
+      newErrors.name = 'Name must be at least 2 characters long';
+    }
 
-    //TODO: Validate that the email input is not empty and is a valid email address
-    //set 'Email is required' in the newErrors object if the email is empty
-    //set 'Please enter a valid email' in the newErrors object if the email 
-    //is not a valid email address
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email';
+    }
 
-    //TODO: Validate that the password input is not empty and is at least 6 characters long
-    //set 'Password is required' in the newErrors object if the password is empty
-    //set 'Password must be at least 6 characters long' in the newErrors object if 
-    //the password is not at least 6 characters long
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters long';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -97,8 +102,40 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ setUser }) => {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {apiError && <ErrorMessage message={apiError} />}
-          {/*  Implement a registration form here: name, email, password, submit button. */}
-          {/*  Use the errors state to display the errors under each input */}
+          <div className="space-y-4">
+            <Input
+              id="nameField"
+              label="Name"
+              name="name"
+              type="text"
+              autoComplete="name"
+              onChange={handleChange}
+              error={errors?.name}
+              fullWidth
+            />
+            <Input
+              id="emailField"
+              label="Email"
+              name="email"
+              autoComplete="email"
+              onChange={handleChange}
+              error={errors?.email}
+              fullWidth
+            />
+            <Input
+              id="passwordField"
+              label="Password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              onChange={handleChange}
+              error={errors?.password}
+              fullWidth
+            />
+          </div>
+          <Button type="submit" fullWidth>
+            Create account
+          </Button>
         </form>
       </div>
     </div>

@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import type { LoginForm, User } from '../types/api';
 import { login } from '../utils/AuthCalls';
@@ -12,48 +14,62 @@ interface LoginPageProps {
 
 const LoginPage: React.FC<LoginPageProps> = ({ setUser }) => {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState<LoginForm>({
     email: '',
     password: '',
   });
+
   const [errors, setErrors] = useState<{ [key: string]: string } | null>(null);
   const [apiError, setApiError] = useState<string>('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+    // Clear field error when user starts typing
+    if (errors?.[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: '',
+      }));
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
 
-    //TODO: Validate that the email input is not empty and is a valid email address
-    //set 'Email is required' in the newErrors object if the email is empty
-    //set 'Please enter a valid email' in the newErrors object if the email 
-    //is not a valid email address
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email';
+    }
 
-
-    //TODO: Validate that the password input is not empty and is at least 6 characters long
-    //set 'Password is required' in the newErrors object if the password is empty
-    //set 'Password must be at least 6 characters long' in the newErrors object
-    // if the password is not at least 6 characters long
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    }
 
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setApiError('');
-    setErrors(null);
 
     if (!validateForm()) {
       return;
     }
 
     try {
-      const userData = await login(formData);
-      setUser(userData);
-      navigate('/books');
-    } catch (error: any) {
-      setApiError(error.error || 'Login failed. Please try again.');
-    } 
+      const user = await login(formData);
+      setUser(user);
+      navigate('/');
+    } catch (err: any) {
+      setApiError(err.error || 'Login failed. Please try again.');
+    }
   };
 
   return (
@@ -61,7 +77,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setUser }) => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to BookVault
+            Sign in to MediaVault
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
@@ -75,12 +91,32 @@ const LoginPage: React.FC<LoginPageProps> = ({ setUser }) => {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {apiError && <ErrorMessage message={apiError} />}
           <div className="space-y-4">
-            {/*  Implement a login form here: email, password, submit button. */}
-            {/*  Use the errors state to display the errors under each input */}
+            <Input
+              id="emailField"
+              label="Email"
+              name="email"
+              autoComplete="email"
+              onChange={handleChange}
+              error={errors?.email}
+              fullWidth
+            />
+            <Input
+              id="passwordField"
+              label="Password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              onChange={handleChange}
+              error={errors?.password}
+              fullWidth
+            />
           </div>
+          <Button type="submit" fullWidth>
+            Sign in
+          </Button>
         </form>
       </div>
     </div>
