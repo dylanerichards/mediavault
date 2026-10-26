@@ -3,17 +3,20 @@ import type {
   ApiResponse,
   ApiError,
   PaginatedResponse,
+  PaginationMeta,
   AuthResponse,
   User,
-  Book,
+  MediaType,
   Author,
   Publisher,
   Favorite,
   Cart,
   LoginForm,
   RegisterForm,
-  BookForm
+  AnalyticsAction,
+  AnalyticsResponse
 } from '../types/api';
+import { emitCartChanged, emitFavoritesChanged } from '../utils/appEvents';
 
 const API_BASE_URL = 'http://localhost:3000/api/v1';
 
@@ -51,10 +54,11 @@ const handleResponse = <T>(response: AxiosResponse<ApiResponse<T>>): T => {
   return response.data.data;
 };
 
-const handleError = (error: any): never => {
-  const apiError: ApiError = error.response?.data || {
-    error: 'An unexpected error occurred',
-  };
+const handleError = (error: unknown): never => {
+  const apiError: ApiError =
+    (axios.isAxiosError(error) ? error.response?.data : undefined) || {
+      error: 'An unexpected error occurred',
+    };
   throw apiError;
 };
 
@@ -85,7 +89,7 @@ export const authApi = {
   async logout(): Promise<void> {
     try {
       await api.delete('/auth/logout');
-    } catch (error) {
+    } catch {
       // Continue with logout even if API call fails
     } finally {
       localStorage.removeItem('authToken');
@@ -102,19 +106,20 @@ export const authApi = {
   },
 };
 
-// Books API
-export const booksApi = {
-  async getBooks(params?: {
+// Media Types API (unified: Book, Podcast, ...)
+export const mediaTypesApi = {
+  async getMediaTypes<T extends MediaType = MediaType>(params?: {
     page?: number;
     per_page?: number;
     search?: string;
+    type?: string;
     author_id?: number;
     publisher_id?: number;
-  }): Promise<PaginatedResponse<Book>> {
+  }): Promise<PaginatedResponse<T>> {
     try {
-      const response = await api.get<ApiResponse<{ books: Book[]; pagination: any }>>('/books', { params });
+      const response = await api.get<ApiResponse<{ media_types: T[]; pagination: PaginationMeta }>>('/media_types', { params });
       return {
-        data: response.data.data.books,
+        data: response.data.data.media_types,
         pagination: response.data.data.pagination,
       };
     } catch (error) {
@@ -122,36 +127,36 @@ export const booksApi = {
     }
   },
 
-  async getBook(id: number): Promise<Book> {
+  async getMediaType<T extends MediaType = MediaType>(id: number): Promise<T> {
     try {
-      const response = await api.get<ApiResponse<{ book: Book }>>(`/books/${id}`);
-      return response.data.data.book;
+      const response = await api.get<ApiResponse<{ media_type: T }>>(`/media_types/${id}`);
+      return response.data.data.media_type;
     } catch (error) {
       return handleError(error);
     }
   },
 
-  async createBook(bookData: BookForm): Promise<Book> {
+  async createMediaType<T extends MediaType = MediaType>(data: Record<string, unknown>): Promise<T> {
     try {
-      const response = await api.post<ApiResponse<{ book: Book }>>('/books', { book: bookData });
-      return response.data.data.book;
+      const response = await api.post<ApiResponse<{ media_type: T }>>('/media_types', { media_type: data });
+      return response.data.data.media_type;
     } catch (error) {
       return handleError(error);
     }
   },
 
-  async updateBook(id: number, bookData: Partial<BookForm>): Promise<Book> {
+  async updateMediaType<T extends MediaType = MediaType>(id: number, data: Record<string, unknown>): Promise<T> {
     try {
-      const response = await api.patch<ApiResponse<{ book: Book }>>(`/books/${id}`, { book: bookData });
-      return response.data.data.book;
+      const response = await api.patch<ApiResponse<{ media_type: T }>>(`/media_types/${id}`, { media_type: data });
+      return response.data.data.media_type;
     } catch (error) {
       return handleError(error);
     }
   },
 
-  async deleteBook(id: number): Promise<void> {
+  async deleteMediaType(id: number): Promise<void> {
     try {
-      await api.delete(`/books/${id}`);
+      await api.delete(`/media_types/${id}`);
     } catch (error) {
       return handleError(error);
     }
@@ -162,7 +167,7 @@ export const booksApi = {
 export const authorsApi = {
   async getAuthors(params?: { page?: number; per_page?: number; search?: string }): Promise<PaginatedResponse<Author>> {
     try {
-      const response = await api.get<ApiResponse<{ authors: Author[]; pagination: any }>>('/authors', { params });
+      const response = await api.get<ApiResponse<{ authors: Author[]; pagination: PaginationMeta }>>('/authors', { params });
       return {
         data: response.data.data.authors,
         pagination: response.data.data.pagination,
@@ -186,7 +191,7 @@ export const authorsApi = {
 export const publishersApi = {
   async getPublishers(params?: { page?: number; per_page?: number; search?: string }): Promise<PaginatedResponse<Publisher>> {
     try {
-      const response = await api.get<ApiResponse<{ publishers: Publisher[]; pagination: any }>>('/publishers', { params });
+      const response = await api.get<ApiResponse<{ publishers: Publisher[]; pagination: PaginationMeta }>>('/publishers', { params });
       return {
         data: response.data.data.publishers,
         pagination: response.data.data.pagination,
@@ -217,9 +222,10 @@ export const favoritesApi = {
     }
   },
 
-  async addToFavorites(bookId: number): Promise<Favorite> {
+  async addToFavorites(mediaTypeId: number): Promise<Favorite> {
     try {
-      const response = await api.post<ApiResponse<{ favorite: Favorite }>>('/favorites', { book_id: bookId });
+      const response = await api.post<ApiResponse<{ favorite: Favorite }>>('/favorites', { media_type_id: mediaTypeId });
+      emitFavoritesChanged();
       return response.data.data.favorite;
     } catch (error) {
       return handleError(error);
@@ -229,6 +235,7 @@ export const favoritesApi = {
   async removeFromFavorites(favoriteId: number): Promise<void> {
     try {
       await api.delete(`/favorites/${favoriteId}`);
+      emitFavoritesChanged();
     } catch (error) {
       return handleError(error);
     }
@@ -246,9 +253,10 @@ export const cartApi = {
     }
   },
 
-  async addToCart(bookId: number, quantity: number = 1): Promise<void> {
+  async addToCart(mediaTypeId: number, quantity: number = 1): Promise<void> {
     try {
-      await api.post('/cart_items', { book_id: bookId, quantity });
+      await api.post('/cart_items', { media_type_id: mediaTypeId, quantity });
+      emitCartChanged();
     } catch (error) {
       return handleError(error);
     }
@@ -257,6 +265,7 @@ export const cartApi = {
   async updateCartItem(cartItemId: number, quantity: number): Promise<void> {
     try {
       await api.patch(`/cart_items/${cartItemId}`, { cart_item: { quantity } });
+      emitCartChanged();
     } catch (error) {
       return handleError(error);
     }
@@ -265,9 +274,49 @@ export const cartApi = {
   async removeFromCart(cartItemId: number): Promise<void> {
     try {
       await api.delete(`/cart_items/${cartItemId}`);
+      emitCartChanged();
     } catch (error) {
       return handleError(error);
     }
+  },
+};
+
+// Analytics API
+export interface AnalyticsEventPayload {
+  action: AnalyticsAction;
+  target_type?: string;
+  target_id?: number;
+  target_label?: string;
+  search_term?: string;
+}
+
+export const analyticsApi = {
+  // Best-effort: analytics should never interrupt the user flow, so failures
+  // are swallowed rather than surfaced.
+  async recordEvent(payload: AnalyticsEventPayload): Promise<void> {
+    try {
+      await api.post('/analytics_events', { analytics_event: payload });
+    } catch {
+      // Intentionally ignored.
+    }
+  },
+
+  // Platform-wide analytics (admin only, enforced server-side).
+  async getEvents(): Promise<AnalyticsResponse> {
+    try {
+      const response = await api.get<ApiResponse<AnalyticsResponse>>('/analytics_events');
+      return response.data.data;
+    } catch (error) {
+      return handleError(error);
+    }
+  },
+
+  // URL for the admin SSE stream. EventSource can't set headers, so the JWT
+  // and the last-seen id are passed as query params.
+  streamUrl(lastId: number = 0): string {
+    const token = localStorage.getItem('authToken') ?? '';
+    const params = new URLSearchParams({ token, last_id: String(lastId) });
+    return `${API_BASE_URL}/analytics_events/stream?${params.toString()}`;
   },
 };
 
