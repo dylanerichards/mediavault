@@ -10,7 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_16_230405) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_26_000001) do
+  create_table "analytics_events", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.string "action", null: false
+    t.string "target_type"
+    t.integer "target_id"
+    t.string "target_label"
+    t.string "search_term"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["action"], name: "index_analytics_events_on_action"
+    t.index ["target_type", "target_id"], name: "index_analytics_events_on_target_type_and_target_id"
+    t.index ["user_id"], name: "index_analytics_events_on_user_id"
+  end
+
   create_table "authors", force: :cascade do |t|
     t.string "name", null: false
     t.text "bio"
@@ -19,36 +33,40 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_16_230405) do
     t.index ["name"], name: "index_authors_on_name"
   end
 
-  create_table "books", force: :cascade do |t|
-    t.string "title"
-    t.string "isbn"
-    t.decimal "price", precision: 8, scale: 2
-    t.integer "publication_year"
-    t.integer "author_id", null: false
-    t.integer "publisher_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["author_id"], name: "index_books_on_author_id"
-    t.index ["publisher_id"], name: "index_books_on_publisher_id"
-  end
-
   create_table "cart_items", force: :cascade do |t|
     t.integer "user_id", null: false
-    t.integer "book_id", null: false
+    t.integer "media_type_id", null: false
     t.integer "quantity"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["book_id"], name: "index_cart_items_on_book_id"
+    t.index ["media_type_id"], name: "index_cart_items_on_media_type_id"
     t.index ["user_id"], name: "index_cart_items_on_user_id"
   end
 
   create_table "favorites", force: :cascade do |t|
     t.integer "user_id", null: false
-    t.integer "book_id", null: false
+    t.integer "media_type_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["book_id"], name: "index_favorites_on_book_id"
+    t.index ["media_type_id"], name: "index_favorites_on_media_type_id"
     t.index ["user_id"], name: "index_favorites_on_user_id"
+  end
+
+  create_table "media_types", force: :cascade do |t|
+    t.string "title"
+    t.string "isbn"
+    t.decimal "price", precision: 8, scale: 2
+    t.integer "publication_year"
+    t.integer "author_id"
+    t.integer "publisher_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "type", null: false
+    t.string "host"
+    t.integer "episode_count"
+    t.index ["author_id"], name: "index_media_types_on_author_id"
+    t.index ["publisher_id"], name: "index_media_types_on_publisher_id"
+    t.index ["type"], name: "index_media_types_on_type"
   end
 
   create_table "publishers", force: :cascade do |t|
@@ -68,10 +86,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_16_230405) do
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
-  add_foreign_key "books", "authors"
-  add_foreign_key "books", "publishers"
-  add_foreign_key "cart_items", "books"
+  add_foreign_key "analytics_events", "users"
+  add_foreign_key "cart_items", "media_types"
   add_foreign_key "cart_items", "users"
-  add_foreign_key "favorites", "books"
+  add_foreign_key "favorites", "media_types"
   add_foreign_key "favorites", "users"
+  add_foreign_key "media_types", "authors"
+  add_foreign_key "media_types", "publishers"
 end
